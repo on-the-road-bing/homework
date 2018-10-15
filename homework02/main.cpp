@@ -50,7 +50,8 @@ typedef struct{                                                           // 请
 QVector<studData> st;
 
 QDebug operator<< (QDebug d, const studData &data) {                      // 补全运算符重载函数，使其能直接输出studData结构
-    d.noquote().nospace()<<data.studNumber<<data.studName<<data.studScore;//QDebug在输出QString和QByteArray等类型的内容时，会自动为其添加双引号。而有时，这反而会让控制台的信息更密集，不便于分析结果。所以，使用该函数，修改此默认设置
+    QDebugStateSaver saver(d);
+    d.noquote().nospace()<<'('<<data.studNumber<<data.studName<<data.studScore<<')';//QDebug在输出QString和QByteArray等类型的内容时，会自动为其添加双引号。而有时，这反而会让控制台的信息更密集，不便于分析结果。所以，使用该函数，修改此默认设置
     return d;
 }
 
@@ -70,11 +71,9 @@ bool myCmp::operator()(const studData &d1, const studData &d2)
     quint32 sortedColumn = 0x00000001<<currentColumn;
     switch (sortedColumn) {
     case SK::col01:
-
     // ...
     // 请补全运算符重载函数
     // ...
-    //
     }
     return result;
 }
