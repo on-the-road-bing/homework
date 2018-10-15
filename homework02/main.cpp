@@ -71,6 +71,12 @@ bool myCmp::operator()(const studData &d1, const studData &d2)
     quint32 sortedColumn = 0x00000001<<currentColumn;
     switch (sortedColumn) {
     case SK::col01:
+        result=(d1.studNumber>d2.studNumber);break;
+    case SK::col02:
+        result=d1.studName>d2.studName;break;
+    case SK::col03:
+        for(int i=0;i<d1.studScore.size();i++)
+            result=d1.studScore.at(i)>d2.studScore.at(i);break;
     // ...
     // 请补全运算符重载函数
     // ...
