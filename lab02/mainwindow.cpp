@@ -71,7 +71,6 @@ void MainWindow::createToolBar ()
     clearBtn->setText (tr("清除"));
     clearBtn->setToolTip(tr("清除当前画板"));
     connect (clearBtn, &QToolButton::clicked, centerFrame, &CenterFrame::clearPaint);
-
     pictureBtn = new QToolButton;
 //    QIcon icon;
 //    icon.addFile(tr(":/pic/1.jpg"));

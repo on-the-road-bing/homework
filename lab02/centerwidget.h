@@ -43,6 +43,7 @@ protected slots:
     void on_btnTextClicked();
     void on_edtTextEdited(const QString &text);
     void on_btnpicClicked();
+    void on_btnDiamondClicked();
 private:
     QVBoxLayout* vLayout;
     QHBoxLayout* hLayout;
@@ -55,6 +56,7 @@ private:
     QPushButton* btnText;
     QLineEdit* edtText;
     QPushButton* btnpic;
+    QPushButton* btnDiamond;
 };
 
 #endif // CENTERFRAME_H
