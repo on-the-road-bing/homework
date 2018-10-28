@@ -13,7 +13,6 @@ DrawWidget::DrawWidget(QWidget *parent) : QWidget(parent)
     pix = new QPixmap(size());      //此QPixmap对象用来准备随时接受绘制的内容
     pix->fill (BACKGROUND_COLOR);          //填充背景色为白色
     setMinimumSize (600, 400);      //设置绘制区窗体的最小尺寸
-
 }
 
 DrawWidget::~DrawWidget()

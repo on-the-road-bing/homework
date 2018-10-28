@@ -6,7 +6,6 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QToolButton>
-#include <QDebug>
 #include <QLayout>
 
 
@@ -72,10 +71,7 @@ void MainWindow::createToolBar ()
     clearBtn->setToolTip(tr("清除当前画板"));
     connect (clearBtn, &QToolButton::clicked, centerFrame, &CenterFrame::clearPaint);
     pictureBtn = new QToolButton;
-//    QIcon icon;
-//    icon.addFile(tr(":/pic/1.jpg"));
-//    pictureBtn->setIcon(icon);
-//    connect (pictureBtn, &QToolButton::clicked, centerFrame, &CenterFrame::draw);
+
 
     // 向工具栏上添加各个控件
     toolBar->addWidget (styleLabel);

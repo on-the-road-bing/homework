@@ -13,7 +13,6 @@
      Q_OBJECT
  public:
      MainWindow(QWidget *parent = 0);
-
      ~MainWindow();
 
      void createToolBar();
@@ -31,6 +30,5 @@
      QToolButton *colorBtn;
      QToolButton *clearBtn;
      QToolButton *pictureBtn;
-     QLabel *imgLabel;
  };
  #endif // MAINWINDOW_H
