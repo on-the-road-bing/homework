@@ -47,15 +47,10 @@ void mainWidget::initComboMonth()
     ui->comboCity->clear();
     ui->comboCity->addItems(city);
 
-//    QString year_month;
-//    QDateTime time=QDateTime::currentDateTime("yyyy-MM");
+
     QStringList month;
-    for(int i=10;i>0;i--){
-        // 此处为固定时间和日期
-        // 请使用QDate或QDateTime将其修正，
-        // 用户运行前一个月开始连续10个月的"年-月"
-        // (如2018-02、2018-01、2017-12...，假设当前日期为2018年3月12日)
-        month<<QString("2018-%1").arg(i,2,10,QChar('0'));
+    for(int i=1;i<=10;i++){
+        month.append(QDateTime::currentDateTime().addMonths(-i).toString("yyyy-MM"));
     }
     ui->comboMonth->clear();
     ui->comboMonth->addItems(month);
@@ -152,7 +147,7 @@ void mainWidget::addLineSeries(QChart *chart, const QString &seriesName, const Q
         mAxisX->setRange(QDateTime::currentDateTime().addMonths(-1),QDateTime::currentDateTime());
 //setRange:设置轴上的范围从最小值到最大值
         QValueAxis *mAxisY = new QValueAxis;
-        mAxisY->setRange(-5,40);
+        mAxisY->setRange(-40,40);
         mAxisY->setLabelFormat("%g");
         mAxisY->setTitleText("摄氏度(°C)");
 
