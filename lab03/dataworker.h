@@ -9,6 +9,14 @@ class QNetworkReply;
 
 
 
+
+
+enum ChartType{  //枚举类型
+    AQI_PM,
+    Temperature
+};
+
+
 /**
  * @brief dataWorker类
  *
@@ -27,6 +35,14 @@ public:
     void doRequest();
     void  CityType(QString newCity);
 
+
+    ChartType getcharttype();
+    QString charttype_name();
+    void setChartType(ChartType newType);
+
+
+
+
 protected:
     QString requestUrl();
     void httpGet(QString url);
@@ -43,12 +59,16 @@ private:
     QString _requestDate;                   //!< 请求年月
 
     QList<QDateTime> dataDate;              //!< 日期
-    QList<qreal> dataHigh;                  //!< 最高温度
-    QList<qreal> dataLow;                   //!< 最低温度
+    QList<qreal> dataone;                  //!< 最高温度
+    QList<qreal> datatwo;                   //!< 最低温度
+
 
     const QString splitter;                 //!< 数据分隔符
     const QString dataPath;                 //!< 数据保存路径
     QString city;                           //城市
+
+
+    enum ChartType charttype;
 
 signals:
     /**

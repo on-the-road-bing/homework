@@ -62,8 +62,8 @@ QString dataWorker::requestDate()
 void dataWorker::doRequest()
 {
     // 导入数据，首先检查是否已经存在数据文件
-    QString fName = QString("%1/%2 %3.txt").arg(dataPath,city,_requestDate);
-//    qDebug()<<fName;
+     QString fName = QString("%1/%2 %3 %4.txt").arg(dataPath,_requestDate,city,charttype_name());
+    qDebug()<<fName;
     QStringList dataList;
     QFile f(fName);
     if(f.open(QIODevice::ReadOnly|QIODevice::Text)){  // 成功打开数据文件，则由文件中读取
@@ -85,6 +85,29 @@ void dataWorker::CityType(QString newCity)
     city=newCity;
 }
 
+ChartType dataWorker::getcharttype()
+{
+    return this->charttype;
+}
+
+QString dataWorker::charttype_name()
+{
+    switch (charttype) {
+    case AQI_PM:
+        return QString("aqi");
+        break;
+    default:
+        return QString("temperature");
+        break;
+    }
+}
+
+void dataWorker::setChartType(ChartType newType)
+{
+    charttype = newType;
+    qDebug()<<charttype;
+}
+
 /**
  * @brief 构造实际请求链接
  * @return 数据页面地址
@@ -92,11 +115,14 @@ void dataWorker::CityType(QString newCity)
  * 该函数将请求年月插入模板中，获得实际数据页面的链接地址。
  */
 QString dataWorker::requestUrl()
-{    
-    QString r =
-            QString("https://lishi.tianqi.com/%1/%2.html").arg(city,_requestDate);
-    qDebug()<<r;
-    return r;
+{
+    QString r;
+   if(charttype==AQI_PM)
+        r =QString("http://www.tianqihoubao.com/aqi/%1-%2.html").arg(city,_requestDate);
+    else
+        r = QString("https://lishi.tianqi.com/%1/%2.html").arg(city,_requestDate);
+   qDebug()<<r;
+   return r;
 }
 
 /**
@@ -132,12 +158,16 @@ void dataWorker::parseHTML(const QString sourceText)
     QStringList strData;
     while (!reader.atEnd()) {
         reader.readNext();
-
         if (reader.isStartElement()) {
   //isStartElement():如果tokenType（）等于StartElement，
 //  则返回true;否则返回true。否则返回false。
-            if (reader.name() == "ul"){         // 查找Html标签：ul
-                strData<<reader.readElementText(QXmlStreamReader::IncludeChildElements).trimmed();
+            if(charttype==Temperature){
+                if (reader.name() == "ul")         // 查找Html标签：ul
+                    strData<<reader.readElementText(QXmlStreamReader::IncludeChildElements).trimmed();
+            }
+            else {
+                if (reader.name() == "tr")        // 查找Html标签：tr
+                    strData<<reader.readElementText(QXmlStreamReader::IncludeChildElements).trimmed();
             }
         }
     }
@@ -145,7 +175,7 @@ void dataWorker::parseHTML(const QString sourceText)
         qDebug()<< "  读取错误： " << reader.errorString();
     }else{
         if(!strData.isEmpty()){
-            qDebug()<<strData;
+//            qDebug()<<strData;
             parseData(strData.join(splitter));
             exportDataToFile(strData.join(splitter));
         }
@@ -168,23 +198,30 @@ void dataWorker::parseData(const QString sourceText)
     QStringList dataList = sourceText.split(splitter);
    // qDebug()<<dataList;
     dataDate.clear();
-    dataHigh.clear();
-    dataLow.clear();
-
+    dataone.clear();
+    datatwo.clear();
     dataList.removeFirst();                  // 第一条数据是表头，删除
     for (QString s : dataList)//对于字符串容器datalist中的子字符串s
     {
 //SkipEmptyParts:使用给定的格式返回由字符串表示的QDateTime，如果不可能，则返回无效的日期时间。
+//split:在发生分隔的地方将字符串拆分为子字符串，并返回这些字符串的列表
 
         QStringList dataList = s.split(" ",QString::SkipEmptyParts);
-        qDebug()<<dataList;
-//        split:在发生分隔的地方将字符串拆分为子字符串，并返回这些字符串的列表
+//        qDebug()<<dataList;
         QDateTime momentInTime = QDateTime::fromString(dataList.at(0),"yyyy-MM-dd");
         dataDate.append(momentInTime);
-        dataHigh.append(dataList.at(1).toDouble());
-        dataLow.append(dataList.at(2).toDouble());
+
+        if(charttype==Temperature){
+            dataone.append(dataList.at(1).toDouble());
+            datatwo.append(dataList.at(2).toDouble());
+            emit dataParseFinished(dataDate,dataone,datatwo);
+        }
+        else{
+            dataone.append(dataList.at(2).toDouble());
+            datatwo.append(dataList.at(4).toDouble());
+            emit dataParseFinished(dataDate,dataone,datatwo);
+        }
     }
-    emit dataParseFinished(dataDate,dataHigh,dataLow);
 }
 
 /**
@@ -199,12 +236,10 @@ void dataWorker::exportDataToFile(const QString dataText)
 {
     QStringList data = dataText.split(splitter);
     QDir dir;
-
-
     if( ! dir.exists(dataPath) )
         qDebug()<<dir.mkdir(dataPath);
 
-    QString fName = QString("%1/%2 %3.txt").arg(dataPath,city,_requestDate);
+    QString fName = QString("%1/%2 %3 %4.txt").arg(dataPath,_requestDate,city,charttype_name());
 
     QFile f(fName);
     if(f.open(QIODevice::WriteOnly|QIODevice::Text)){
@@ -269,17 +304,21 @@ void dataWorker::httpsFinished(QNetworkReply *reply)
 
     // 先做一个简单处理，获取包含内容的完整<div>..</div>标签内的文本内容，
     // 并滤除其中的空白字符"\r\n\t"
-    int begin = html.indexOf("<div class=\"tqtongji2\">");
-    //indexof:返回此字符串中第一次出现的字符串的索引位置，
-    //    从索引位置向前搜索。如果未找到，则返回-1。
-    int end = html.indexOf("<div class=\"lishicity03\">");
-    html = html.mid(begin,end-begin);//此时得到包含内容的完整<div>..</div>标签内的文本内容
-    //mid 从指定的位置索引处开始，返回包含此字符串的end-begin个字符的字符串。
-    html = html.left(html.indexOf("<div style=\"clear:both\">")); //此时滤除其中的空白字符"\r\n\t"
-//    left(int n)返回包含字符串的n个最左侧字符的子字符串。如果n大于或等于size（）或小于零，则返回整个字符串。
 
+
+    //indexof:返回此字符串中第一次出现的字符串的索引位置，
+    //从索引位置向前搜索。如果未找到，则返回-1。
+    //mid 从指定的位置索引处开始，返回包含此字符串的end-begin个字符的字符串。
+    //left(int n)返回包含字符串的n个最左侧字符的子字符串。如果n大于或等于size（）或小于零，则返回整个字符串。
+    //simplified返回一个字符串，该字符串从开头和结尾删除了空格，并且每个内部空格序列都替换为单个空格。
+    int begin;
+    int end;
+    begin = html.indexOf("<div class=\"tqtongji2\">");
+    end = html.indexOf("<div class=\"lishicity03\">");
+    html = html.mid(begin,end-begin);//此时得到包含内容的完整<div>..</div>标签内的文本内容 
+    html = html.left(html.indexOf("<div style=\"clear:both\">")); //此时滤除其中的空白字符"\r\n\t"
     html = html.simplified().trimmed();    //去除空格
-//simplified返回一个字符串，该字符串从开头和结尾删除了空格，并且每个内部空格序列都替换为单个空格。
+
     if (! html.isEmpty()){
         qDebug()<<"开始解析html";
         parseHTML(html);  // 开始解析HTML

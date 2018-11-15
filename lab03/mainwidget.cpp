@@ -3,8 +3,6 @@
 #include <dataworker.h>
 #include <QDateTime>
 
-
-
 /**
  * @brief 主窗口构造函数
  * @param parent 父窗口指针
@@ -19,16 +17,18 @@ mainWidget::mainWidget(QWidget *parent) :
     ui->chartview->setRenderHint(QPainter::Antialiasing);
 //    Renderhints用于指定QPainter的标志，任何给定引擎都可能会或可能不会遵守这些标志。
 //    QPainter::Antialiasing表示如果可能，引擎应该对基元的边缘进行抗锯齿处理。
-    initComboMonth();
 
+    initComboMonth();
+    initComboCity();
     resetChart("南京气温");
+
     addLineSeries(ui->chartview->chart(),"",Qt::red);
 
     worker = new dataWorker(this);
+    worker->setChartType(Temperature);
     connect(worker,&dataWorker::dataParseFinished,this,&mainWidget::updateDataChart);
     connect(worker,&dataWorker::dataParseError,this,&mainWidget::on_dataError);
     connect(worker,&dataWorker::httpRequestError,this,&mainWidget::on_dataError);
-
 }
 
 mainWidget::~mainWidget()
@@ -42,19 +42,20 @@ mainWidget::~mainWidget()
  */
 void mainWidget::initComboMonth()
 {
-    QStringList city;
-    city <<"南京"<<"北京"<<"杭州"<<"哈尔滨";
-    ui->comboCity->clear();
-    ui->comboCity->addItems(city);
-
-
     QStringList month;
     for(int i=1;i<=10;i++){
         month.append(QDateTime::currentDateTime().addMonths(-i).toString("yyyy-MM"));
     }
     ui->comboMonth->clear();
-    ui->comboMonth->addItems(month);
+    ui->comboMonth->addItems(month);   
+}
 
+void mainWidget::initComboCity()
+{
+    QStringList city;
+    city <<"南京"<<"北京"<<"杭州"<<"哈尔滨";
+    ui->comboCity->clear();
+    ui->comboCity->addItems(city);
 }
 
 /**
@@ -78,32 +79,25 @@ void mainWidget::initComboMonth()
 void mainWidget::resetChart(const QString &title)
 {
     QChart* chart = ui->chartview->chart();
-
-
     //chart->setTitle(QString("单向开关函数的傅里叶变换%1").arg("\u03c0"));
     chart->setTitle(title);
     chart->setAnimationOptions(QChart::SeriesAnimations);
 //AnimationOptions 此属性保存图表的动画选项。 根据此设置启用或禁用动画。
 //SeriesAnimations系列动画在图表中启用。
+// 在后面的显示中，Legend被设为浮动模式，
+// 因此，这里在清除数据时，需要先attach一下
 
-
-    // 在后面的显示中，Legend被设为浮动模式，
-    // 因此，这里在清除数据时，需要先attach一下
+//isAttachedToChart()如果图注(legend)附加到图表，则返回true。
+//attachToChart():将图注附加到图表。图表可能会调整图注的布局。
     if(!chart->legend()->isAttachedToChart())
-        //isAttachedToChart()如果图注(legend)附加到图表，则返回true。
         chart->legend()->attachToChart();
-    //attachToChart():将图注附加到图表。图表可能会调整图注的布局。
-
     chart->legend()->hide();//隐藏图注（默认情况下项目可见）。
     chart->legend()->setAlignment(Qt::AlignBottom);
 //    setAlignment：图注如何与图表对齐。
 //    可以是Qt :: AlignTop，Qt :: AlignBottom，Qt :: AlignLeft，
 //    Qt :: AlignRight。如果设置了多个标志，则结果未定义。
-
-
-
-    // removeAllSeries函数即将包含的个序列delete掉，
-    // 同时也清空序列列表
+ // removeAllSeries函数即将包含的个序列delete掉，
+ // 同时也清空序列列表
     chart->removeAllSeries();
 }
 
@@ -128,11 +122,8 @@ void mainWidget::addLineSeries(QChart *chart, const QString &seriesName, const Q
     QPen pen(color);
     pen.setWidth(lineWidth);
     series->setPen(pen);
-
     series->setPointsVisible(true);//此属性保存数据点是否可见且应绘制。
-
-    // 序列名称，显示在legend中
-    series->setName(seriesName);
+    series->setName(seriesName); // 序列名称，显示在legend中
 
     if(chart->series().count() == 1){
         // 第一次添加序列，新增一个Axes，
@@ -145,17 +136,24 @@ void mainWidget::addLineSeries(QChart *chart, const QString &seriesName, const Q
         mAxisX->setTitleText("日期");
         mAxisX->setTickCount(10+1);
         mAxisX->setRange(QDateTime::currentDateTime().addMonths(-1),QDateTime::currentDateTime());
-//setRange:设置轴上的范围从最小值到最大值
+//setRange:设置轴上的范围从最小值到最大值        
         QValueAxis *mAxisY = new QValueAxis;
-        mAxisY->setRange(-40,40);
-        mAxisY->setLabelFormat("%g");
-        mAxisY->setTitleText("摄氏度(°C)");
+
+        if(worker->getcharttype()==Temperature){
+
+              mAxisY->setRange(-40,40);
+              mAxisY->setLabelFormat("%g");
+              mAxisY->setTitleText("摄氏度(°C)");
+        }
+        else{
+            mAxisY->setRange(0,300);
+            mAxisY->setTitleText("空气质量指数");
+        }
 
         chart->setAxisX(mAxisX,series);
+        chart->setAxisY(mAxisY,series);
 //        将轴轴添加到图表中，并将其作为底部对齐的水平轴附加到系列序列中。
 //        该图表取得了轴和系列的所有权。之前附加到系列的任何水平轴都将被删除。
-
-        chart->setAxisY(mAxisY,series);
 
     }else{
         // 将新增加的列与现有坐标轴连接上
@@ -167,7 +165,7 @@ void mainWidget::addLineSeries(QChart *chart, const QString &seriesName, const Q
 }
 
 
-/**
+/**.
  * @brief 连接序列中所有Legend（图注）中Marker的信号与槽
  */
 void mainWidget::connectMarkers()
@@ -175,11 +173,9 @@ void mainWidget::connectMarkers()
     QChart* chart = ui->chartview->chart();
     // 将所有的marker的信号与槽进行连接
     for (QLegendMarker* marker: chart->legend()->markers()) {
-//        QLegendMarker类是一个抽象对象，可用于访问图注中的标记。
-//        markers()返回图注中的标记列表。可以通过指定返回标记的系列来过滤列表。
-
-
-        // 连接前先断开原先的信号槽连接，避免多次连接信号槽
+// QLegendMarker类是一个抽象对象，可用于访问图注中的标记。
+// markers()返回图注中的标记列表。可以通过指定返回标记的系列来过滤列表。
+// 连接前先断开原先的信号槽连接，避免多次连接信号槽
         disconnect(marker, &QLegendMarker::clicked, this, &mainWidget::handleMarkerClicked);
         connect(marker, &QLegendMarker::clicked, this, &mainWidget::handleMarkerClicked);
     }
@@ -262,8 +258,9 @@ void mainWidget::handleMarkerClicked()
  */
 void mainWidget::on_btnStart_clicked()
 {
-    // 禁用两个按键
+    // 禁用三个按键
     ui->comboMonth->setEnabled(false);
+    ui->comboCity->setEnabled(false);
     ui->btnStart->setEnabled(false);
 
     if(ui->comboCity->currentText()=="南京")
@@ -277,23 +274,32 @@ void mainWidget::on_btnStart_clicked()
 
     // 设置chart的标题
     QString chartTitle = "";
-    if(ui->comboMonth->count()>0){
-        chartTitle = ui->comboMonth->currentText().replace("-","年");
-        chartTitle.append(QString("月 %1气温").arg(ui->comboCity->currentText()));
-    }else{
-        chartTitle="南京气温";
-//        chartTitle=QString("%1气温").arg(ui->comboCity->currentText());
+
+    if(worker->getcharttype()==Temperature){
+
+        if(ui->comboMonth->count()>0){
+            chartTitle = ui->comboMonth->currentText().replace("-","年");
+            chartTitle.append(QString("月 %1气温").arg(ui->comboCity->currentText()));
+        }else{
+//           chartTitle="南京气温";
+            chartTitle=QString("%1气温").arg(ui->comboCity->currentText());
+        }
+
+    }
+    else{
+        if(ui->comboMonth->count()>0){
+            chartTitle = ui->comboMonth->currentText().replace("-","年");
+            chartTitle.append(QString("月 %1空气质量").arg(ui->comboCity->currentText()));
+        }else{
+            chartTitle=QString("%1空气质量").arg(ui->comboCity->currentText());
+        }
     }
     resetChart(chartTitle);
-
     // 设置dataWorker对象的请求年月
     worker->setRequestDate(ui->comboMonth->currentText());
-
     // 发起HTTP请求
     worker->doRequest();
-
 }
-
 
 /**
  * @brief dataWorker对象的dataParseFinished信号响应槽函数
@@ -304,26 +310,47 @@ void mainWidget::on_btnStart_clicked()
  * 该函数执行具体的数据更新工作，将dataWorker对象解析的数据插入序列中，并更新图表。
  * 更新完成后，使能两个按键，使用户可以发起下一次请求。
  */
-void mainWidget::updateDataChart(QList<QDateTime> date, QList<qreal> tempHigh, QList<qreal> tempLow)
+void mainWidget::updateDataChart(QList<QDateTime> date,QList<qreal> one,QList<qreal> two)
 {
     QChart* chart = ui->chartview->chart();
 
-    // 添加第一条数据曲线
-    addLineSeries(chart,"日最高温度",Qt::red,2);
-    QLineSeries* seriesHigh = qobject_cast<QLineSeries*> (chart->series().last());
-    seriesHigh->setPointsVisible(ui->cbShowPoint->isChecked());
+    switch (worker->getcharttype()){
+    case AQI_PM:{
+        // 添加第一条数据曲线
+        addLineSeries(chart,"AQI",Qt::red,2);
+        QLineSeries* seriesAQI = qobject_cast<QLineSeries*> (chart->series().last());
+        seriesAQI->setPointsVisible(ui->cbShowPoint->isChecked());
 
-    // 添加第二条数据曲线
-    addLineSeries(chart,"日最低温度",Qt::blue,2);
-    QLineSeries* seriesLow = qobject_cast<QLineSeries*> (chart->series().last());
-    seriesLow->setPointsVisible(ui->cbShowPoint->isChecked());
+        // 添加第二条数据曲线
+        addLineSeries(chart,"PM 2.5",Qt::blue,2);
+        QLineSeries* seriesPM = qobject_cast<QLineSeries*> (chart->series().last());
+        seriesPM->setPointsVisible(ui->cbShowPoint->isChecked());
 
-    // 向每条曲线中添加数据
-    for (int i=0; i<date.count();i++){
-        seriesHigh->append(date.at(i).toMSecsSinceEpoch(),tempHigh.at(i));
-        seriesLow->append(date.at(i).toMSecsSinceEpoch(),tempLow.at(i));
+        // 向每条曲线中添加数据
+        for (int i=0; i<date.count();i++){
+            seriesAQI->append(date.at(i).toMSecsSinceEpoch(),one.at(i));
+            seriesPM->append(date.at(i).toMSecsSinceEpoch(),two.at(i));
+        }
     }
+        break;
+    default:{
+        // 添加第一条数据曲线
+        addLineSeries(chart,"日最高温度",Qt::red,2);
+        QLineSeries* seriesHigh = qobject_cast<QLineSeries*> (chart->series().last());
+        seriesHigh->setPointsVisible(ui->cbShowPoint->isChecked());
 
+        // 添加第二条数据曲线
+        addLineSeries(chart,"日最低温度",Qt::blue,2);
+        QLineSeries* seriesLow = qobject_cast<QLineSeries*> (chart->series().last());
+        seriesLow->setPointsVisible(ui->cbShowPoint->isChecked());
+
+        // 向每条曲线中添加数据
+        for (int i=0; i<date.count();i++){
+            seriesHigh->append(date.at(i).toMSecsSinceEpoch(),one.at(i));
+            seriesLow->append(date.at(i).toMSecsSinceEpoch(),two.at(i));
+        }
+    }
+    }
     // 设置坐标轴
     QDateTimeAxis *mAxisX = qobject_cast<QDateTimeAxis*>(chart->axisX());
     mAxisX->setRange(date.first(),date.last());
@@ -334,8 +361,9 @@ void mainWidget::updateDataChart(QList<QDateTime> date, QList<qreal> tempHigh, Q
     // 更新图表
     chart->update();
 
-    // 使能两个按钮
+    // 使能三个按钮
     ui->comboMonth->setEnabled(true);
+    ui->comboCity->setEnabled(true);
     ui->btnStart->setEnabled(true);
 }
 
@@ -365,7 +393,6 @@ void mainWidget::on_cbShowPoint_clicked()
 void mainWidget::on_btnLegendAlign_clicked()
 {
      QPushButton *button = qobject_cast<QPushButton *>(sender());
-
      QChart* chart = ui->chartview->chart();
      Qt::Alignment align = chart->legend()->alignment();
      switch (align) {
@@ -439,5 +466,16 @@ void mainWidget::on_dataError(QString error)
     qDebug()<<error;
     // 使能两个按钮
     ui->comboMonth->setEnabled(true);
+    ui->comboCity->setEnabled(true);
     ui->btnStart->setEnabled(true);
+}
+
+void mainWidget::on_radioButton_clicked()
+{
+    worker->setChartType(Temperature);
+}
+
+void mainWidget::on_radioButton1_clicked()
+{
+    worker->setChartType(AQI_PM);
 }
