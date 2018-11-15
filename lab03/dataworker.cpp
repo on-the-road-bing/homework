@@ -214,14 +214,14 @@ void dataWorker::parseData(const QString sourceText)
         if(charttype==Temperature){
             dataone.append(dataList.at(1).toDouble());
             datatwo.append(dataList.at(2).toDouble());
-            emit dataParseFinished(dataDate,dataone,datatwo);
         }
         else{
             dataone.append(dataList.at(2).toDouble());
             datatwo.append(dataList.at(4).toDouble());
-            emit dataParseFinished(dataDate,dataone,datatwo);
+
         }
     }
+    emit dataParseFinished(dataDate,dataone,datatwo);
 }
 
 /**
@@ -313,8 +313,14 @@ void dataWorker::httpsFinished(QNetworkReply *reply)
     //simplified返回一个字符串，该字符串从开头和结尾删除了空格，并且每个内部空格序列都替换为单个空格。
     int begin;
     int end;
-    begin = html.indexOf("<div class=\"tqtongji2\">");
-    end = html.indexOf("<div class=\"lishicity03\">");
+    if(charttype==Temperature){
+        begin = html.indexOf("<div class=\"tqtongji2\">");
+        end = html.indexOf("<div class=\"lishicity03\">");
+    }
+    else{
+        begin = html.indexOf("<table");
+        end = html.indexOf("</table>")+8;
+    }
     html = html.mid(begin,end-begin);//此时得到包含内容的完整<div>..</div>标签内的文本内容 
     html = html.left(html.indexOf("<div style=\"clear:both\">")); //此时滤除其中的空白字符"\r\n\t"
     html = html.simplified().trimmed();    //去除空格

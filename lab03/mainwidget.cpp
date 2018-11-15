@@ -147,7 +147,7 @@ void mainWidget::addLineSeries(QChart *chart, const QString &seriesName, const Q
         }
         else{
             mAxisY->setRange(0,300);
-            mAxisY->setTitleText("空气质量指数");
+            mAxisY->setTitleText("AQI指数");
         }
 
         chart->setAxisX(mAxisX,series);
